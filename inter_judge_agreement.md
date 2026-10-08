@@ -1,8 +1,10 @@
 # Research Plan: Inter-Judge Agreement as a Reliability Signal for Preference Data
 
-*Twelve Angry LLMs: Judge Agreement as a Label-Reliability Signal for Preference Data*
+*Judge Agreement as a Label-Reliability Signal for Preference Data*
 
 **Versions**
+
+v0.6 — 2026-10-08
 
 v0.5 — 2026-08-18
 
@@ -82,15 +84,17 @@ A central design goal is that IJA should slot into the way people actually build
 preference data, so that the downstream API we build is easy to adopt. The table below
 summarizes the shapes that matter.
 
-| Pipeline | Candidates per prompt | Label form | How it is trained on |
-|---|---|---|---|
-| InstructGPT | 4–9, human-ranked | full ranking | all C(K,2) pairs → Bradley-Terry RM |
-| HH-RLHF / SHP / Chatbot Arena | 2 | chosen/rejected (Arena allows ties) | pairwise RM / DPO |
-| Llama 2 | 2 | pair + 4-level margin | margin-aware Bradley-Terry loss |
-| [UltraFeedback](https://arxiv.org/pdf/2310.01377) | 4 at judging; 2 as shipped | four 1–10 aspect scalars, then binarized | binarized → DPO (Zephyr recipe) |
-| [Nectar](https://huggingface.co/datasets/berkeley-nest/Nectar) / Starling | 7, GPT-4 ranks K-wise | full ranking | K-wise reward loss |
-| HelpSteer2 | 1 | scalar attribute ratings | regression RM |
-| GRPO (DeepSeek) | K on-policy samples | reward per sample | group-normalized advantage |
+
+| Pipeline                                                                  | Candidates per prompt      | Label form                               | How it is trained on                |
+| ------------------------------------------------------------------------- | -------------------------- | ---------------------------------------- | ----------------------------------- |
+| InstructGPT                                                               | 4–9, human-ranked          | full ranking                             | all C(K,2) pairs → Bradley-Terry RM |
+| HH-RLHF / SHP / Chatbot Arena                                             | 2                          | chosen/rejected (Arena allows ties)      | pairwise RM / DPO                   |
+| Llama 2                                                                   | 2                          | pair + 4-level margin                    | margin-aware Bradley-Terry loss     |
+| [UltraFeedback](https://arxiv.org/pdf/2310.01377)                         | 4 at judging; 2 as shipped | four 1–10 aspect scalars, then binarized | binarized → DPO (Zephyr recipe)     |
+| [Nectar](https://huggingface.co/datasets/berkeley-nest/Nectar) / Starling | 7, GPT-4 ranks K-wise      | full ranking                             | K-wise reward loss                  |
+| HelpSteer2                                                                | 1                          | scalar attribute ratings                 | regression RM                       |
+| GRPO (DeepSeek)                                                           | K on-policy samples        | reward per sample                        | group-normalized advantage          |
+
 
 Two things follow from this:
 
@@ -127,9 +131,8 @@ the panel ourselves. We start with judging a thousand prompts with several model
 **One shared rubric across all judges.** Within a dataset, every judge receives the *same* guideline that includes:
 
 - The definition of what a score of 1 through 5 means (scoring protocol) 
-
 - The criteria by which responses are to be ordered (ranking protocol)
- 
+
 We do not give different judges different prompts. 
 
 UltraFeedback releases its full annotation template 
@@ -143,7 +146,7 @@ both datasets, the panel judges each dataset the way its original pipeline did:
 
 **UltraFeedback** the judges score each response 1–5 against the shared rubric (per-response
 scoring, the UltraFeedback style).
- 
+
  **Nectar** the judges rank the seven responses
 directly in one pass (K-wise ranking, the Nectar style). This keeps our panel labels
 directly comparable to each dataset's published labels and means the downstream DPO
@@ -225,7 +228,11 @@ rather than error, exactly what Phase 4 asks about our low-IJA datapoints.
 > standard `(prompt, chosen, rejected)` schema so
 > that it composes with any DPO or reward-model trainer.
 
+
+
 ## 6. Experimental phases
+
+
 
 ### Phase 0 — Novelty check *(ongoing)*
 
@@ -262,17 +269,17 @@ datapoints — while changing one component of the setup at a time, so every run
 comparable to the Phase 1 with four variations:
 
 1. **Panel vs. self-consistency.** Replace the J different models with one model sampled
-   J times at temperature above zero, recompute IJA, recompute AUROC. If this matches the
+  J times at temperature above zero, recompute IJA, recompute AUROC. If this matches the
    real panel, model diversity adds nothing and the panel apparatus is unnecessary — so we
    settle it up front. This arm doubles as the BSDetector-style baseline (§5) and as the
    extreme case of correlated judges (§2).
 2. **Panel size.** Recompute IJA from judge subsets of size J = 3, 5, 7, 12 and plot AUROC
-   against J — the "twelve angry" curve — to find where adding judges stops helping.
+  against J to find where adding judges stops helping.
 3. **Agreement metric.** Recompute IJA with Spearman's ρ and with simple pairwise-winner
-   agreement in place of Kendall's τ-b. Similar AUROC across the three shows the result is
+  agreement in place of Kendall's τ-b. Similar AUROC across the three shows the result is
    not an artifact of the metric choice.
 4. **Candidate count (maybe).** Repeat the experiment at K = 7 (Nectar) and K = 2 (a single pair)
-   alongside the K = 4 UltraFeedback base case, to see whether the signal strengthens with
+  alongside the K = 4 UltraFeedback base case, to see whether the signal strengthens with
    longer rankings and survives the degenerate pairwise case.
 
 Every run also reports the judge–judge correlation matrix and dataset-level Krippendorff's α
@@ -306,18 +313,14 @@ judge failure on datapoints humans find easy. The answer decides whether a pract
 should drop low-IJA data or keep it soft-labeled, and whether high IJA really marks labels
 humans agree are correct.
 
-## 7. Rigor checklist
+## 7. Roadmap
 
-- Pin exact judge model versions; score at temperature 0 (except the self-consistency arm);
-  cache every API response keyed on (model, prompt hash); seed everything.
-- Pre-register the hypotheses in this repo before Phase 1 results come in.
-- Report dollar cost per policy — the economics of a cheap panel of small judges is part of the
-  argument, following PoLL.
-- Publication path: a blog post after Phase 1, then a workshop (DMLR at ICML) or ACL/EMNLP
-  Findings submission, and NeurIPS Datasets & Benchmarks if Phase 3 lands. The library and the
-  exported IJA-annotated datasets are artifacts in their own right.
+- Report cost per policy since the economics of a cheap panel of small judges is part of the argument, following PoLL.
+- Publication: A (interactive) blog post after; then an industry track or workshop; then NeurIPS Datasets & Benchmarks.
 
 ## 8. Future directions
+
+
 
 ### Categorical agreement (κ) for binary preference datasets, including Tülu 3
 
@@ -342,52 +345,32 @@ into scope as well.
 
 ### GRPO and on-policy RL
 
-Using IJA to gate or scale per-prompt rewards inside GRPO-style group-relative RL, so that
-prompts with low panel agreement contribute less to the advantage estimate. This reuses the
+Using IJA to gate or scale per-prompt rewards inside GRPO-style group-relative RL, so that  
+prompts with low panel agreement contribute less to the advantage estimate. This reuses the  
 same panel machinery at the RL stage rather than the data-curation stage.
 
-## 9. Library status
-
-The instrument is implemented as the `twelve-angry-llms` package (v0.2.0, `src/`), with the
-study-specific material kept separate in `research/`. The plan's concepts map to the package
-as follows: `ScoringProtocol` and `RankingProtocol` implement the two elicitation styles of
-§4 with shared prompts and validated parsing; `Panel` fans judges out asynchronously and
-computes per-datapoint IJA (tie-aware Kendall's τ-b by default, Spearman and pairwise-winner
-selectable for the metric ablation) plus the dataset-level diagnostics (Krippendorff's α and
-the judge–judge correlation matrix); the exporter emits TRL's `(prompt, chosen, rejected)`
-schema with `prompt_ija`, `pair_agreement`, and the raw per-judge values; clients cover
-OpenRouter (the default, with provider/quantization pinning for reproducibility) and any other
-OpenAI-compatible endpoint, with a SQLite response cache and token-usage
-tracking satisfying the §7 rigor items; and raw UltraFeedback/Nectar loaders preserve the
-original scores and ranks in metadata for the margin baselines.
-
-The remaining step before Phase 1 is the pilot (`research/experiments/pilot.py`): 200
-UltraFeedback prompts, half corrupted via `research/experiments/corruptions.py`, run through
-a small panel to confirm the outputs parse, that τ-b actually spreads across datapoints, and
-that a blatant flip visibly tanks the corrupted pair's agreement. Then scale up to Phase 1.
-
-## 10. Reading list (priority order)
+## 9. References
 
 1. [Data-centric RLHF metrics](https://arxiv.org/pdf/2409.09603) — the motivation, and the
-   unbuilt "disagreement as a filter" suggestion closest to our thesis.
+  unbuilt "disagreement as a filter" suggestion closest to our thesis.
 2. [Preference-dataset curation study](https://arxiv.org/pdf/2511.10985) — the "robust to label
-   flipping" null result we must beat.
+  flipping" null result we must beat.
 3. [PoLL](https://arxiv.org/html/2404.18796v1) and
-   [Nine Judges, Two Effective Votes](https://arxiv.org/html/2605.29800) — the panel framing and
+  [Nine Judges, Two Effective Votes](https://arxiv.org/html/2605.29800) — the panel framing and
    its sharpest critique.
 4. [UltraFeedback](https://arxiv.org/pdf/2310.01377) — our primary data source and the source of
-   the shared rubric template.
+  the shared rubric template.
 5. [Robust DPO](https://arxiv.org/pdf/2403.00409) and
-   [soft preference labels](https://arxiv.org/pdf/2409.06691) — complementary methods that
+  [soft preference labels](https://arxiv.org/pdf/2409.06691) — complementary methods that
    consume our soft-label output.
 6. [Reward-model ensembles](https://arxiv.org/html/2310.02743v2) — the closest mechanism, at a
-   different pipeline stage.
+  different pipeline stage.
 7. [Plank 2022](https://arxiv.org/pdf/2211.02570) and Uma et al. 2021 — the theory that
-   disagreement can be signal rather than noise.
+  disagreement can be signal rather than noise.
 8. [Cross-model disagreement for UQ](https://arxiv.org/pdf/2604.17112) — evidence that the
-   mechanism works in a neighboring domain.
+  mechanism works in a neighboring domain.
 9. [Tülu 3](https://arxiv.org/pdf/2411.15124) — the binary-data integration target for the
-   future κ phase (§8).
+  future κ phase (§8).
 
 *Note: the 2025–2026 arXiv entries above were found via search (July 2026) and read only at
 abstract level so far; read them in full before citing in a paper.*
